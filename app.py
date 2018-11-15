@@ -1,5 +1,7 @@
+from functools import wraps
 import os
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+
+from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 from gwa_spotify_api import SpotifyAuthAPI
 
 SCOPES = [
@@ -9,6 +11,7 @@ SCOPES = [
 SPOTIFY_CALLBACK_URL = 'http://localhost:5000/callback/spotify'
 
 app = Flask(__name__)
+app.secret_key = os.urandom(12)
 
 
 spotify_api_config = {
@@ -16,6 +19,14 @@ spotify_api_config = {
     'SPOTIFY_CLIENT_SECRET': os.environ.get('SPOTIFY_CLIENT_SECRET'),
     'SPOTIFY_CALLBACK_URL': os.environ.get('SPOTIFY_CALLBACK_URL') or SPOTIFY_CALLBACK_URL,
 }
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get('logged_in') is None:
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.before_first_request
 def load_spotify_api():
@@ -25,7 +36,13 @@ def load_spotify_api():
     )
 
 
+@app.route('/login')
+def login():
+    return render_template('login.html')
+
+
 @app.route('/')
+@login_required
 def index():
     return render_template('main.html')
 
@@ -44,9 +61,20 @@ def spotify_callback():
     token = spotify_api.get_access_token(auth_code)
     spotify_api.assign_token(token=token)
 
+    session['logged_in'] = True
+
     return redirect(url_for('welcome'))
 
 
 @app.route('/welcome')
+@login_required
 def welcome():
     return jsonify(spotify_api.get("me"))
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    session['logged_in'] = False
+
+    return redirect(url_for('login'))
