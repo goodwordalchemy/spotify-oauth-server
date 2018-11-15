@@ -1,1 +1,1 @@
-elm make --output=templates/main.html src/*
+elm make --output=static/generated/elm.js src/*
