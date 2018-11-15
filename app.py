@@ -35,6 +35,11 @@ def load_spotify_api():
         assign_token=False, config=spotify_api_config, scopes_list=SCOPES
     )
 
+@app.route('/test')
+@login_required
+def welcome():
+    return jsonify(spotify_api.get("me"))
+
 
 @app.route('/login')
 def login():
@@ -63,13 +68,7 @@ def spotify_callback():
 
     session['logged_in'] = True
 
-    return redirect(url_for('welcome'))
-
-
-@app.route('/welcome')
-@login_required
-def welcome():
-    return jsonify(spotify_api.get("me"))
+    return redirect(url_for('index'))
 
 
 @app.route('/logout')
